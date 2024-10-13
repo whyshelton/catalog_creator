@@ -254,7 +254,7 @@ class MyApp:
         return button
 
     def show_info(self):
-        messagebox.showinfo("Информация", "Это приложение для управления каталогами.")
+        messagebox.showinfo("Информация", "@whyshelton")
 
     def create_support_button(self):
         button = tk.Button(self.root, text="Поддержка", command=self.show_support)
@@ -262,7 +262,7 @@ class MyApp:
         return button
 
     def show_support(self):
-        messagebox.showinfo("Поддержка", "Для поддержки свяжитесь с example@example.com")
+        messagebox.showinfo("Поддержка", "Для поддержки свяжитесь с @whyshelton")
 
 if __name__ == "__main__":
     root = tk.Tk()

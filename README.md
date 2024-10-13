@@ -1,5 +1,27 @@
 # catalog_creator
 
+2.2.1
+- Добавлена кнопка для перехода к пути
+- Небольшие изменения интерфейса главного окна
+- Изменения интерфейса окна каталога
+- Оптимизация программы
+- Код был почищен
+- Исправлены все ошибки в импортом и экспортом
+- Была добавлена кнопка для создания пункта 
+- Была добавлена кнопка создания вкладок
+
+
+ - Added a button to navigate to the path
+- Minor changes to the main window interface
+- Changes to the catalog window interface
+- Program optimization
+- Code has been cleaned up
+- All errors in import and export have been fixed
+- A button for creating an item has been added
+- A button for creating tabs has been added
+- 
+-------------------------------------------------------------------------
+
 2.1.0
 - Fixed errors in the code
 - The code was optimized

@@ -1,4 +1,26 @@
 # catalog_creator
+
+2.1.0
+- Fixed errors in the code
+- The code was optimized
+- Added the button "Other information"
+- Added the button "Technical support"
+- Changed the button for setting transparency
+- Now the user can choose the degree of transparency
+- Fixed a bug when updated information was not saved in the catalog
+- The button "view the latest catalogs" was added
+
+- Исправленны ошибки в коде
+- Код был оптимизирован
+- Добавлена кнопка "Прочая информация"
+- Добавлена кнопка "Техподдержка"
+- Изменена кнопка настройки прозрачности
+   - Теперь пользователь сам может выбрать степень прозрачности 
+- Исправлен баг когда обновленная информация не сохранялась в каталоге
+- Была добавлена кнопка "просмотр последних коталогов"
+
+--------------------------------------------------------------------------
+
 Major update
 2.0.0
 Big update, did a lot of things in fact:

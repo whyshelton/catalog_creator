@@ -1,26 +1,27 @@
 import tkinter as tk
-from tkinter import messagebox, filedialog, ttk
+from tkinter import messagebox, filedialog, ttk, simpledialog
 import time
 import json
 import os
+import subprocess
 
 class MyApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Catalog Creator v2.1.0")
-        self.root.geometry("400x300")
+        self.root.title("Catalog Creator")
+        self.root.geometry("400x400")
 
         
         self.center_window()
 
-       
+        
         self.loader_label = tk.Label(root, text="Welcome to beta version", font=("Arial", 16))
         self.loader_label.pack(pady=20)
 
         
         self.fade_in()
 
-        # Кнопки
+        
         self.create_button = self.create_button_with_hover("Создать каталог", self.open_catalog_window)
         self.create_button.pack(pady=10)
 
@@ -30,31 +31,30 @@ class MyApp:
         self.view_button = self.create_button_with_hover("Посмотреть последние каталоги", self.view_recent_catalogs)
         self.view_button.pack(pady=10)
 
+        self.import_button = self.create_button_with_hover("Импортировать каталог", self.import_catalog)
+        self.import_button.pack(pady=10)
+
+        self.export_button = self.create_button_with_hover("Экспортировать каталог", self.export_catalog)
+        self.export_button.pack(pady=10)
+
         self.exit_button = self.create_button_with_hover("Выход", self.exit_app)
         self.exit_button.pack(pady=10)
 
-     
+        
         self.info_button = self.create_info_button()
-        self.info_button.place(relx=1.0, rely=1.0, anchor='se', x=-10, y=-10)  # Размещение в правом нижнем углу
+        self.info_button.place(relx=1.0, rely=1.0, anchor='se', x=-10, y=-10)
 
         
         self.support_button = self.create_support_button()
-        self.support_button.place(relx=0.0, rely=1.0, anchor='sw', x=10, y=-10)  # Размещение в левом нижнем углу
+        self.support_button.place(relx=0.0, rely=1.0, anchor='sw', x=10, y=-10)
 
-        # Данные каталога
-        self.movie_data = [
-            {"name": "Film 1", "genre": "Action", "year": "2020"},
-            {"name": "Film 2", "genre": "Comedy", "year": "2021"}
-        ]
+       
+        self.movie_data = []
+        self.book_data = []
+        self.animation_data = []
 
-        self.book_data = [
-            {"name": "Book 1", "author": "Author 1", "year": "2018"},
-            {"name": "Book 2", "author": "Author 2", "year": "2019"}
-        ]
-
-        self.animation_data = [
-            {"name": "Animation 1", "studio": "Studio A", "year": "2017"}
-        ]
+        
+        self.notebook = None
 
     def center_window(self):
         screen_width = self.root.winfo_screenwidth()
@@ -69,70 +69,67 @@ class MyApp:
             self.root.update()
             time.sleep(delay)
 
+    def create_button_with_hover(self, text, command):
+        """Создание кнопки с эффектом наведения."""
+        button = tk.Button(self.root, text=text, command=command)
+
+        def on_enter(e):
+            button['background'] = 'lightblue'
+
+        def on_leave(e):
+            button['background'] = 'SystemButtonFace'
+
+        button.bind("<Enter>", on_enter)
+        button.bind("<Leave>", on_leave)
+
+        return button
+
     def open_catalog_window(self):
         catalog_window = tk.Toplevel(self.root)
         catalog_window.title("Catalog Window")
-        catalog_window.geometry("600x300")
+        catalog_window.geometry("600x400")
 
         
-        self.toggle_transparency_button = tk.Button(catalog_window, text="Показать ползунок прозрачности",
-                                                    command=self.show_transparency_slider)
-        self.toggle_transparency_button.pack(pady=5)
-
-        
-        self.transparency_scale = tk.Scale(catalog_window, from_=0.0, to=1.0, resolution=0.1,
-                                            orient='horizontal', label='Степень прозрачности', bg='lightblue',
-                                            activebackground='deepskyblue', troughcolor='lightgray')
-        self.transparency_scale.set(1.0)  
-        self.transparency_scale.pack(pady=5)
-        self.transparency_scale.pack_forget()  
-
-        
-        self.apply_transparency_button = tk.Button(catalog_window, text="Применить прозрачность",
-                                                    command=lambda: self.set_transparency(catalog_window))
-        self.apply_transparency_button.pack(pady=5)
+        self.notebook = ttk.Notebook(catalog_window)
 
        
-        notebook = ttk.Notebook(catalog_window)
+        self.create_new_tab(tab_name="Фильмы", data=self.movie_data)
+        self.create_new_tab(tab_name="Книги", data=self.book_data)
+        self.create_new_tab(tab_name="Анимация", data=self.animation_data)
 
-        movies_tab = ttk.Frame(notebook)
-        books_tab = ttk.Frame(notebook)
-        animation_tab = ttk.Frame(notebook)
-
-        notebook.add(movies_tab, text="Фильмы")
-        notebook.add(books_tab, text="Книги")
-        notebook.add(animation_tab, text="Анимация")
+        self.notebook.pack(fill='both', expand=True)
 
        
-        self.movies_list = ttk.Treeview(movies_tab, columns=("name", "genre", "year"))
-        self.books_list = ttk.Treeview(books_tab, columns=("name", "author", "year"))
-        self.animation_list = ttk.Treeview(animation_tab, columns=("name", "studio", "year"))
+        new_tab_button = tk.Button(catalog_window, text="+", command=self.create_new_tab_dialog)
+        new_tab_button.place(relx=1.0, rely=0.0, anchor='ne', x=-10, y=10)  
 
         
-        self.setup_treeview(self.movies_list, ["Название", "Жанр", "Год"])
-        self.setup_treeview(self.books_list, ["Название", "Автор", "Год"])
-        self.setup_treeview(self.animation_list, ["Название", "Студия", "Год"])
+        delete_tab_button = tk.Button(catalog_window, text="-", command=self.delete_current_tab)
+        delete_tab_button.place(relx=1.0, rely=0.0, anchor='ne', x=-50, y=10)  
 
-       
-        self.populate_treeview(self.movies_list, self.movie_data)
-        self.populate_treeview(self.books_list, self.book_data)
-        self.populate_treeview(self.animation_list, self.animation_data)
+    def create_new_tab_dialog(self):
+        """Создает новую вкладку по запросу пользователя."""
+        tab_name = simpledialog.askstring("Название вкладки", "Введите название новой вкладки:")
+        if tab_name:
+            self.create_new_tab(tab_name=tab_name)
 
-        
-        self.movies_list.pack(fill='both', expand=True)
-        self.books_list.pack(fill='both', expand=True)
-        self.animation_list.pack(fill='both', expand=True)
+    def create_new_tab(self, tab_name="Новая вкладка", data=None):
+        """Создает новую вкладку в ноутбуке."""
+        tab = ttk.Frame(self.notebook)
+        self.notebook.add(tab, text=tab_name)
 
-        notebook.pack(fill='both', expand=True)
+        # Treeview для данных
+        treeview = ttk.Treeview(tab, columns=("name", "genre", "year"))
+        self.setup_treeview(treeview, ["Название", "Жанр", "Год"])
+        self.populate_treeview(treeview, data or [])
+        treeview.pack(fill='both', expand=True)
 
-        
-        self.movies_list.bind("<Double-1>", lambda event: self.edit_item(self.movies_list, self.movie_data, "фильм"))
-        self.books_list.bind("<Double-1>", lambda event: self.edit_item(self.books_list, self.book_data, "книгу"))
-        self.animation_list.bind("<Double-1>",
-                                 lambda event: self.edit_item(self.animation_list, self.animation_data, "анимацию"))
+        # Кнопка для добавления новых пунктов
+        add_button = tk.Button(tab, text="Добавить пункт", command=lambda: self.add_item(treeview, tab_name))
+        add_button.pack(pady=5)
 
-    def show_transparency_slider(self):
-        self.transparency_scale.pack(pady=5) 
+        # Добавление событий 
+        treeview.bind("<Double-1>", lambda event: self.edit_item(treeview, tab_name))
 
     def setup_treeview(self, treeview, columns):
         for i, col in enumerate(columns):
@@ -148,128 +145,124 @@ class MyApp:
             values = tuple(item.values())
             treeview.insert('', 'end', values=values)
 
-    def set_transparency(self, window):
-        transparency_value = self.transparency_scale.get()
-        window.attributes("-alpha", transparency_value)
+    def add_item(self, treeview, tab_name):
+        """Добавляет новый пункт в список."""
+        name = simpledialog.askstring("Введите название", "Название:")
+        genre = simpledialog.askstring("Введите жанр", "Жанр:")
+        year = simpledialog.askstring("Введите год", "Год:")
 
-    def save_file(self):
-        file_path = filedialog.asksaveasfilename(defaultextension=".json",
-                                                 filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
-        if file_path:
-            catalog_data = {
-                "movies": self.movie_data,
-                "books": self.book_data,
-                "animations": self.animation_data
-            }
-            with open(file_path, 'w', encoding='utf-8') as file:
-                json.dump(catalog_data, file, ensure_ascii=False, indent=4)
-            messagebox.showinfo("Успех", "Файл сохранен!")
-            self.update_recent_catalogs(file_path)  # Обновление списка последних каталогов
+        if name and genre and year:
+            new_item = {"name": name, "genre": genre, "year": year}
+            if tab_name == "Фильмы":
+                self.movie_data.append(new_item)
+            elif tab_name == "Книги":
+                self.book_data.append(new_item)
+            elif tab_name == "Анимация":
+                self.animation_data.append(new_item)
+            self.populate_treeview(treeview, self.get_current_data(tab_name))
 
-    def exit_app(self):
-        if messagebox.askokcancel("Выход", "Вы уверены, что хотите выйти?"):
-            self.root.destroy()
+    def get_current_data(self, tab_name):
+        """Возвращает данные для текущей вкладки."""
+        if tab_name == "Фильмы":
+            return self.movie_data
+        elif tab_name == "Книги":
+            return self.book_data
+        elif tab_name == "Анимация":
+            return self.animation_data
+        return []
 
-    def edit_item(self, treeview, data, item_type):
+    def edit_item(self, treeview, tab_name):
         selected_item = treeview.selection()
         if selected_item:
             item_values = treeview.item(selected_item, 'values')
 
-            # Создание нового окна для редактирования
+           
             edit_window = tk.Toplevel(self.root)
-            edit_window.title(f"Редактировать {item_type}")
+            edit_window.title("Редактировать элемент")
 
-            fields = [("Название", item_values[0]), ("Жанр/Автор/Студия", item_values[1]), ("Год", item_values[2])]
+            fields = [("Название", item_values[0]), ("Жанр", item_values[1]), ("Год", item_values[2])]
             entries = []
-            for field_name, value in fields:
-                label = tk.Label(edit_window, text=field_name + ":")
-                label.pack()
+
+            for field, value in fields:
+                label = tk.Label(edit_window, text=field)
+                label.pack(pady=5)
                 entry = tk.Entry(edit_window)
                 entry.insert(0, value)
-                entry.pack()
+                entry.pack(pady=5)
                 entries.append(entry)
 
-            save_button = tk.Button(edit_window, text="Сохранить",
-                                    command=lambda: self.save_edited_item(selected_item, entries, data))
-            save_button.pack()
+            def save_changes():
+                for i, entry in enumerate(entries):
+                    # Обновление данных
+                    if tab_name == "Фильмы":
+                        self.movie_data[treeview.index(selected_item)][list(self.movie_data[0].keys())[i]] = entry.get()
+                    elif tab_name == "Книги":
+                        self.book_data[treeview.index(selected_item)][list(self.book_data[0].keys())[i]] = entry.get()
+                    elif tab_name == "Анимация":
+                        self.animation_data[treeview.index(selected_item)][list(self.animation_data[0].keys())[i]] = entry.get()
+                self.populate_treeview(treeview, self.get_current_data(tab_name))
+                edit_window.destroy()
 
-    def save_edited_item(self, selected_item, entries, data):
-        new_values = [entry.get() for entry in entries]
-        if all(new_values):
-            treeview = self.movies_list if 'фильм' in selected_item else self.books_list if 'книга' in selected_item else self.animation_list
-            treeview.item(selected_item, values=new_values)
+            save_button = tk.Button(edit_window, text="Сохранить", command=save_changes)
+            save_button.pack(pady=10)
 
-            # Обновление данных
-            if treeview == self.movies_list:
-                index = self.movies_list.index(selected_item)
-                data[index] = {"name": new_values[0], "genre": new_values[1], "year": new_values[2]}
-            elif treeview == self.books_list:
-                index = self.books_list.index(selected_item)
-                data[index] = {"name": new_values[0], "author": new_values[1], "year": new_values[2]}
-            elif treeview == self.animation_list:
-                index = self.animation_list.index(selected_item)
-                data[index] = {"name": new_values[0], "studio": new_values[1], "year": new_values[2]}
-
-            messagebox.showinfo("Успех", "Элемент успешно обновлен!")
+    def delete_current_tab(self):
+        """Удаляет текущую вкладку."""
+        selected_tab_index = self.notebook.index(self.notebook.select())
+        if selected_tab_index >= 0:
+            self.notebook.forget(selected_tab_index)
         else:
-            messagebox.showwarning("Ошибка", "Пожалуйста, заполните все поля.")
+            messagebox.showwarning("Предупреждение", "Сначала выберите вкладку для удаления.")
 
-    def create_button_with_hover(self, text, command):
-        button = tk.Button(self.root, text=text, command=command, bg='lightgray', activebackground='deepskyblue')
-        button.bind("<Enter>", lambda e: button.config(bg='lightblue'))
-        button.bind("<Leave>", lambda e: button.config(bg='lightgray'))
-        return button
-
-    def create_info_button(self):
-        info_button = tk.Button(self.root, text="ℹ️", command=self.show_info, width=2, bg='lightgray',
-                                activebackground='deepskyblue')
-        info_button.config(font=("Arial", 12))
-        return info_button
-
-    def create_support_button(self):
-        support_button = tk.Button(self.root, text="🛠️", command=self.support_info, width=2, bg='lightgray',
-                                   activebackground='deepskyblue')
-        support_button.config(font=("Arial", 12))
-        return support_button
-
-    def support_info(self):
-        messagebox.showinfo("Техподдержка", "Свяжитесь с нами по email:")
-
-    def show_info(self):
-        messagebox.showinfo("Информация", "Креатор каталогов\nВерсия 1.0\n\n"
-                                            "Планируемые улучшения:\n- Добавить возможность импорта/экспорта\n"
-                                            "- Улучшение интерфейса\n"
-                                            "- Добавить возможность поиска по каталогу")
+    def save_file(self):
+        file_path = filedialog.asksaveasfilename(defaultextension=".json",
+                                                   filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
+        if file_path:
+            data_to_save = {
+                "movies": self.movie_data,
+                "books": self.book_data,
+                "animations": self.animation_data
+            }
+            with open(file_path, 'w') as f:
+                json.dump(data_to_save, f)
+            messagebox.showinfo("Сохранение", "Данные успешно сохранены!")
 
     def view_recent_catalogs(self):
-        recent_catalogs = self.get_recent_catalogs()
-        if recent_catalogs:
-            recent_window = tk.Toplevel(self.root)
-            recent_window.title("Последние каталоги")
-            recent_window.geometry("400x300")
+        
+        messagebox.showinfo("Посмотреть каталоги", "Функция просмотра недоступна в этой версии.")
 
-            label = tk.Label(recent_window, text="Последние созданные каталоги:", font=("Arial", 14))
-            label.pack(pady=10)
+    def import_catalog(self):
+        file_path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
+        if file_path:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+                self.movie_data = data.get("movies", [])
+                self.book_data = data.get("books", [])
+                self.animation_data = data.get("animations", [])
+                messagebox.showinfo("Импорт", "Данные успешно импортированы!")
 
-            listbox = tk.Listbox(recent_window)
-            for catalog in recent_catalogs:
-                listbox.insert(tk.END, catalog)
-            listbox.pack(fill=tk.BOTH, expand=True)
+    def export_catalog(self):
+        # Здесь можно реализовать экспорт каталога
+        messagebox.showinfo("Экспорт", "Функция экспорта недоступна в этой версии.")
 
-        else:
-            messagebox.showinfo("Нет данных", "Пока нет созданных каталогов.")
+    def exit_app(self):
+        self.root.quit()
 
-    def update_recent_catalogs(self, file_path):
-        recent_files_path = "recent_catalogs.txt"
-        with open(recent_files_path, 'a') as f:
-            f.write(file_path + "\n")
+    def create_info_button(self):
+        button = tk.Button(self.root, text="i", command=self.show_info)
+        button.configure(bg="lightgrey", fg="black", font=("Arial", 10, "bold"))
+        return button
 
-    def get_recent_catalogs(self):
-        recent_files_path = "recent_catalogs.txt"
-        if os.path.exists(recent_files_path):
-            with open(recent_files_path, 'r') as f:
-                return [line.strip() for line in f.readlines()]
-        return []
+    def show_info(self):
+        messagebox.showinfo("Информация", "Это приложение для управления каталогами.")
+
+    def create_support_button(self):
+        button = tk.Button(self.root, text="Поддержка", command=self.show_support)
+        button.configure(bg="lightgrey", fg="black", font=("Arial", 10, "bold"))
+        return button
+
+    def show_support(self):
+        messagebox.showinfo("Поддержка", "Для поддержки свяжитесь с example@example.com")
 
 if __name__ == "__main__":
     root = tk.Tk()

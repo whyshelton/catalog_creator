@@ -1,5 +1,21 @@
 # catalog_creator
 
+Import and Export in Word and Excel:
+
+-Functions import_from_word, import_from_excel, export_to_word, and export_to_excel have been added.
+It is important that the column names used for exporting to Excel are "Name," "Genre," and "Year."
+-Handling Different Formats for Import and Export:
+The logic for selecting formats for import and export has been simplified using corresponding functions.
+
+
+-Импорт и экспорт в Word и Excel:
+Добавлены функции import_from_word, import_from_excel, export_to_word, и export_to_excel.
+Важно, чтобы для экспорта в Excel использовались названия столбцов: "Название", "Жанр", "Год".
+-Обработка разных форматов при импорте и экспорте:
+Упрощена логика выбора формата для импорта и экспорта, используя соответствующие функции.
+
+------------------------------------------------------------------------------------
+
 2.2.1
 - Добавлена кнопка для перехода к пути
 - Небольшие изменения интерфейса главного окна

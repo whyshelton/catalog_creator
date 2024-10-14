@@ -3,7 +3,8 @@ from tkinter import messagebox, filedialog, ttk, simpledialog
 import time
 import json
 import os
-import subprocess
+import pandas as pd
+from docx import Document
 
 class MyApp:
     def __init__(self, root):
@@ -40,7 +41,7 @@ class MyApp:
         self.exit_button = self.create_button_with_hover("Выход", self.exit_app)
         self.exit_button.pack(pady=10)
 
-        
+     
         self.info_button = self.create_info_button()
         self.info_button.place(relx=1.0, rely=1.0, anchor='se', x=-10, y=-10)
 
@@ -48,12 +49,12 @@ class MyApp:
         self.support_button = self.create_support_button()
         self.support_button.place(relx=0.0, rely=1.0, anchor='sw', x=10, y=-10)
 
-       
+        
         self.movie_data = []
         self.book_data = []
         self.animation_data = []
 
-        
+        # Хранилище для вкладок
         self.notebook = None
 
     def center_window(self):
@@ -89,23 +90,23 @@ class MyApp:
         catalog_window.title("Catalog Window")
         catalog_window.geometry("600x400")
 
-        
+        # Создание вкладок
         self.notebook = ttk.Notebook(catalog_window)
 
-       
+        # Изначальные вкладки
         self.create_new_tab(tab_name="Фильмы", data=self.movie_data)
         self.create_new_tab(tab_name="Книги", data=self.book_data)
         self.create_new_tab(tab_name="Анимация", data=self.animation_data)
 
         self.notebook.pack(fill='both', expand=True)
 
-       
+        # Кнопка для создания новой вкладки
         new_tab_button = tk.Button(catalog_window, text="+", command=self.create_new_tab_dialog)
-        new_tab_button.place(relx=1.0, rely=0.0, anchor='ne', x=-10, y=10)  
+        new_tab_button.place(relx=1.0, rely=0.0, anchor='ne', x=-10, y=10)  # Правый верхний угол
 
-        
+        # Кнопка для удаления текущей вкладки
         delete_tab_button = tk.Button(catalog_window, text="-", command=self.delete_current_tab)
-        delete_tab_button.place(relx=1.0, rely=0.0, anchor='ne', x=-50, y=10)  
+        delete_tab_button.place(relx=1.0, rely=0.0, anchor='ne', x=-50, y=10)  # Правый верхний угол, смещенная влево
 
     def create_new_tab_dialog(self):
         """Создает новую вкладку по запросу пользователя."""
@@ -118,17 +119,17 @@ class MyApp:
         tab = ttk.Frame(self.notebook)
         self.notebook.add(tab, text=tab_name)
 
-        # Treeview для данных
+        
         treeview = ttk.Treeview(tab, columns=("name", "genre", "year"))
         self.setup_treeview(treeview, ["Название", "Жанр", "Год"])
         self.populate_treeview(treeview, data or [])
         treeview.pack(fill='both', expand=True)
 
-        # Кнопка для добавления новых пунктов
+        
         add_button = tk.Button(tab, text="Добавить пункт", command=lambda: self.add_item(treeview, tab_name))
         add_button.pack(pady=5)
 
-        # Добавление событий 
+        # Добавление событий двойного клика для редактирования
         treeview.bind("<Double-1>", lambda event: self.edit_item(treeview, tab_name))
 
     def setup_treeview(self, treeview, columns):
@@ -176,7 +177,7 @@ class MyApp:
         if selected_item:
             item_values = treeview.item(selected_item, 'values')
 
-           
+            # Создание нового окна для редактирования
             edit_window = tk.Toplevel(self.root)
             edit_window.title("Редактировать элемент")
 
@@ -193,7 +194,7 @@ class MyApp:
 
             def save_changes():
                 for i, entry in enumerate(entries):
-                    # Обновление данных
+                    # Обновление данных в соответствующем списке
                     if tab_name == "Фильмы":
                         self.movie_data[treeview.index(selected_item)][list(self.movie_data[0].keys())[i]] = entry.get()
                     elif tab_name == "Книги":
@@ -228,22 +229,132 @@ class MyApp:
             messagebox.showinfo("Сохранение", "Данные успешно сохранены!")
 
     def view_recent_catalogs(self):
-        
+        # Здесь можно реализовать просмотр последних каталогов
         messagebox.showinfo("Посмотреть каталоги", "Функция просмотра недоступна в этой версии.")
 
     def import_catalog(self):
-        file_path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
+        file_path = filedialog.askopenfilename(filetypes=[
+            ("JSON files", "*.json"),
+            ("Word files", "*.docx"),
+            ("Excel files", "*.xlsx"),
+            ("All files", "*.*")])
         if file_path:
-            with open(file_path, 'r') as f:
-                data = json.load(f)
-                self.movie_data = data.get("movies", [])
-                self.book_data = data.get("books", [])
-                self.animation_data = data.get("animations", [])
-                messagebox.showinfo("Импорт", "Данные успешно импортированы!")
+            if file_path.endswith('.json'):
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                    self.movie_data = data.get("movies", [])
+                    self.book_data = data.get("books", [])
+                    self.animation_data = data.get("animations", [])
+                    messagebox.showinfo("Импорт", "Данные успешно импортированы из JSON!")
+            elif file_path.endswith('.docx'):
+                self.import_from_word(file_path)
+            elif file_path.endswith('.xlsx'):
+                self.import_from_excel(file_path)
+
+    def import_from_word(self, file_path):
+        """Импортирует данные из документа Word."""
+        doc = Document(file_path)
+        data = {"movies": [], "books": [], "animations": []}
+        for paragraph in doc.paragraphs:
+            if paragraph.text.startswith("Фильмы:"):
+                category = "movies"
+            elif paragraph.text.startswith("Книги:"):
+                category = "books"
+            elif paragraph.text.startswith("Анимация:"):
+                category = "animations"
+            else:
+                if category:
+                    parts = paragraph.text.split(",")
+                    if len(parts) == 3:
+                        item = {"name": parts[0].strip(), "genre": parts[1].strip(), "year": parts[2].strip()}
+                        data[category].append(item)
+
+        self.movie_data = data.get("movies", [])
+        self.book_data = data.get("books", [])
+        self.animation_data = data.get("animations", [])
+        messagebox.showinfo("Импорт", "Данные успешно импортированы из Word!")
+
+    def import_from_excel(self, file_path):
+        """Импортирует данные из Excel файла."""
+        xls = pd.ExcelFile(file_path)
+        data = {"movies": [], "books": [], "animations": []}
+        for sheet_name in xls.sheet_names:
+            df = pd.read_excel(xls, sheet_name)
+            for index, row in df.iterrows():
+                item = {"name": row['Название'], "genre": row['Жанр'], "year": row['Год']}
+                if sheet_name == "Фильмы":
+                    data['movies'].append(item)
+                elif sheet_name == "Книги":
+                    data['books'].append(item)
+                elif sheet_name == "Анимация":
+                    data['animations'].append(item)
+
+        self.movie_data = data.get("movies", [])
+        self.book_data = data.get("books", [])
+        self.animation_data = data.get("animations", [])
+        messagebox.showinfo("Импорт", "Данные успешно импортированы из Excel!")
 
     def export_catalog(self):
-        # Здесь можно реализовать экспорт каталога
-        messagebox.showinfo("Экспорт", "Функция экспорта недоступна в этой версии.")
+        file_path = filedialog.asksaveasfilename(defaultextension=".json",
+                                                   filetypes=[("JSON files", "*.json"), ("Word files", "*.docx"), ("Excel files", "*.xlsx"), ("All files", "*.*")])
+        if file_path:
+            if file_path.endswith('.json'):
+                self.export_to_json(file_path)
+            elif file_path.endswith('.docx'):
+                self.export_to_word(file_path)
+            elif file_path.endswith('.xlsx'):
+                self.export_to_excel(file_path)
+
+    def export_to_json(self, file_path):
+        """Экспорт данных в формате JSON."""
+        data_to_save = {
+            "movies": self.movie_data,
+            "books": self.book_data,
+            "animations": self.animation_data
+        }
+        with open(file_path, 'w') as f:
+            json.dump(data_to_save, f)
+        messagebox.showinfo("Экспорт", "Данные успешно экспортированы в JSON!")
+
+    def export_to_word(self, file_path):
+        """Экспорт данных в документ Word."""
+        doc = Document()
+        doc.add_heading('Каталог', 0)
+
+        if self.movie_data:
+            doc.add_heading('Фильмы:', level=1)
+            for item in self.movie_data:
+                doc.add_paragraph(f"{item['name']}, {item['genre']}, {item['year']}")
+
+        if self.book_data:
+            doc.add_heading('Книги:', level=1)
+            for item in self.book_data:
+                doc.add_paragraph(f"{item['name']}, {item['genre']}, {item['year']}")
+
+        if self.animation_data:
+            doc.add_heading('Анимация:', level=1)
+            for item in self.animation_data:
+                doc.add_paragraph(f"{item['name']}, {item['genre']}, {item['year']}")
+
+        doc.save(file_path)
+        messagebox.showinfo("Экспорт", "Данные успешно экспортированы в Word!")
+
+    def export_to_excel(self, file_path):
+        """Экспорт данных в Excel файл."""
+        with pd.ExcelWriter(file_path) as writer:
+            if self.movie_data:
+                df_movies = pd.DataFrame(self.movie_data)
+                df_movies.to_excel(writer, sheet_name='Фильмы', index=False)
+
+            if self.book_data:
+                df_books = pd.DataFrame(self.book_data)
+                df_books.to_excel(writer, sheet_name='Книги', index=False)
+
+            if self.animation_data:
+                df_animations = pd.DataFrame(self.animation_data)
+                df_animations.to_excel(writer, sheet_name='Анимация', index=False)
+
+        messagebox.showinfo("Экспорт", "Данные успешно экспортированы в Excel!")
 
     def exit_app(self):
         self.root.quit()
@@ -262,7 +373,7 @@ class MyApp:
         return button
 
     def show_support(self):
-        messagebox.showinfo("Поддержка", "Для поддержки свяжитесь с @whyshelton")
+        messagebox.showinfo("Поддержка", "@whyshelton")
 
 if __name__ == "__main__":
     root = tk.Tk()
